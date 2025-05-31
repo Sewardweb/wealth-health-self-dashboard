@@ -11,7 +11,7 @@ DATA_PATH = BASE_DIR / "data.csv"
 # Title
 st.title("WEALTH • HEALTH • SELF Dashboard")
 
-# --- Entry Form (exactly one st.form block) ---
+# --- Entry Form (only one st.form block) ---
 categories = ["Work", "Personal", "Health goal", "Finance", "Other"]
 with st.form("entry"):
     decision = st.text_input("What decision are you logging?")
@@ -22,7 +22,7 @@ with st.form("entry"):
     submit = st.form_submit_button("Log Decision")
 
 if submit:
-    # Warning for negative or zero impact
+    # Warn for negative or zero impact
     negative = [
         name
         for name, val in [("Wealth", w), ("Health", h), ("Self", s)]
@@ -63,7 +63,7 @@ except FileNotFoundError:
         "Decision", "Category", "Wealth", "Health", "Self", "Time"
     ])
 
-# Ensure Category exists for legacy CSVs
+# Ensure Category exists (for older CSVs)
 if "Category" not in df.columns:
     df["Category"] = "Uncategorized"
 
