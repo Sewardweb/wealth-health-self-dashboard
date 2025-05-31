@@ -102,18 +102,34 @@ if not df2.empty:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    # Bar chart of latest decision
+  if not df2.empty:
+    # Ternary plot (existing code) …
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Bar chart of last-selected decision
     last = df2.iloc[-1]
-    stats = last[["Wealth", "Health", "Self"]].to_dict()
-    melt = pd.DataFrame([{
-        "Sector": k,
-        "Impact": v
-    } for k, v in stats.items()])
+    melt = last[["Wealth","Health","Self"]].reset_index()
+    melt.columns = ["Sector","Impact"]
     fig2 = px.bar(
-        melt, x="Sector", y="Impact",
-        color_discrete_sequence=None,
+        melt,
+        x="Sector",
+        y="Impact",
         title=f"Raw impact for: {last['Decision']} ({last['Category']})"
     )
     st.plotly_chart(fig2, use_container_width=True)
+
+    # ← START Overall Impact snippet
+    totals = df2[["Wealth", "Health", "Self"]].sum()
+    melt_totals = totals.reset_index()
+    melt_totals.columns = ["Sector", "Total Impact"]
+    fig3 = px.bar(
+        melt_totals,
+        x="Sector",
+        y="Total Impact",
+        title="Overall Impact for Selected Decisions"
+    )
+    st.plotly_chart(fig3, use_container_width=True)
+    # ← END Overall Impact snippet
+
 else:
     st.info("No decisions to show.")
