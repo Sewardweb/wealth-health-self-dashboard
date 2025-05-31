@@ -1,20 +1,17 @@
 import os
-import datetime
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 from pathlib import Path
 
-# BASE_DIR is “the folder containing this file (app.py)”
-BASE_DIR  = Path(__file__).resolve().parent
-
-# DATA_PATH is “data.csv inside that same folder”
+# Define paths
+BASE_DIR = Path(__file__).resolve().parent
 DATA_PATH = BASE_DIR / "data.csv"
 
 # Title
 st.title("WEALTH • HEALTH • SELF Dashboard")
 
-# --- Entry Form ---
+# --- Entry Form (exactly one st.form block) ---
 categories = ["Work", "Personal", "Health goal", "Finance", "Other"]
 with st.form("entry"):
     decision = st.text_input("What decision are you logging?")
@@ -25,9 +22,17 @@ with st.form("entry"):
     submit = st.form_submit_button("Log Decision")
 
 if submit:
-    # Warn for negative or zero impact
-    negative = [name for name, val in [("Wealth", w), ("Health", h), ("Self", s)] if val < 0]
-    zero = [name for name, val in [("Wealth", w), ("Health", h), ("Self", s)] if val == 0]
+    # Warning for negative or zero impact
+    negative = [
+        name
+        for name, val in [("Wealth", w), ("Health", h), ("Self", s)]
+        if val < 0
+    ]
+    zero = [
+        name
+        for name, val in [("Wealth", w), ("Health", h), ("Self", s)]
+        if val == 0
+    ]
     if negative:
         st.error(f"Negative impact on: {', '.join(negative)}")
     elif zero:
@@ -42,8 +47,6 @@ if submit:
         "Self": s,
         "Time": pd.Timestamp.now()
     }])
-
-    # ← Both of these lines must be indented to match df_new’s indentation
     df_new.to_csv(
         DATA_PATH,
         mode="a",
@@ -56,20 +59,32 @@ if submit:
 try:
     df = pd.read_csv(DATA_PATH)
 except FileNotFoundError:
-    df = pd.DataFrame(columns=["Decision", "Category", "Wealth", "Health", "Self", "Time"])
-# Ensure category col exists (for legacy CSVs)
+    df = pd.DataFrame(columns=[
+        "Decision", "Category", "Wealth", "Health", "Self", "Time"
+    ])
+
+# Ensure Category exists for legacy CSVs
 if "Category" not in df.columns:
     df["Category"] = "Uncategorized"
-# Parse timestamps
-df["Time"] = pd.to_datetime(df["Time"], errors="coerce")
+
+# Parse timestamps if any rows exist
+if not df.empty:
+    df["Time"] = pd.to_datetime(df["Time"], errors="coerce")
 
 # --- Automated Summary ---
-today = pd.Timestamp.now().normalize()
-df_today = df[df["Time"].dt.normalize() == today]
-
-decisions_today = len(df_today)
-avg_wealth = df["Wealth"].mean() if not df.empty else 0
-avg_neg_flags = df.apply(lambda r: sum(val<0 for val in [r.Wealth, r.Health, r.Self]), axis=1).mean() if not df.empty else 0
+if not df.empty:
+    today = pd.Timestamp.now().normalize()
+    df_today = df[df["Time"].dt.normalize() == today]
+    decisions_today = len(df_today)
+    avg_wealth = df["Wealth"].mean()
+    avg_neg_flags = df.apply(
+        lambda r: sum(val < 0 for val in [r.Wealth, r.Health, r.Self]),
+        axis=1
+    ).mean()
+else:
+    decisions_today = 0
+    avg_wealth = 0
+    avg_neg_flags = 0
 
 st.subheader("📊 Summary")
 c1, c2, c3 = st.columns(3)
@@ -84,7 +99,8 @@ df["s2"] = df["Self"] + 100
 
 # --- Filter by user choice ---
 sel = st.multiselect(
-    "Which decisions?", df["Decision"].unique().tolist(),
+    "Which decisions?",
+    df["Decision"].unique().tolist(),
     default=df["Decision"].unique().tolist()
 )
 df2 = df[df["Decision"].isin(sel)]
@@ -102,14 +118,10 @@ if not df2.empty:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-  if not df2.empty:
-    # Ternary plot (existing code) …
-    st.plotly_chart(fig, use_container_width=True)
-
     # Bar chart of last-selected decision
     last = df2.iloc[-1]
-    melt = last[["Wealth","Health","Self"]].reset_index()
-    melt.columns = ["Sector","Impact"]
+    melt = last[["Wealth", "Health", "Self"]].reset_index()
+    melt.columns = ["Sector", "Impact"]
     fig2 = px.bar(
         melt,
         x="Sector",
@@ -118,7 +130,7 @@ if not df2.empty:
     )
     st.plotly_chart(fig2, use_container_width=True)
 
-    # ← START Overall Impact snippet
+    # Overall impact across all filtered decisions
     totals = df2[["Wealth", "Health", "Self"]].sum()
     melt_totals = totals.reset_index()
     melt_totals.columns = ["Sector", "Total Impact"]
@@ -129,7 +141,6 @@ if not df2.empty:
         title="Overall Impact for Selected Decisions"
     )
     st.plotly_chart(fig3, use_container_width=True)
-    # ← END Overall Impact snippet
 
 else:
     st.info("No decisions to show.")
